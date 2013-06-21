@@ -1,0 +1,8 @@
+syntax: glob
+*.tsv
+*.dat
+*.txt
+*.pyc
+genemap
+doid.obo
+debug/*
