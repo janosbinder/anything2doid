@@ -8,7 +8,7 @@ import backtrack
 import mapper
 
 b = backtrack.Backtrack("doid", "filter.tsv")
-m = mapper.Mapper(b, "doid", "omim", 120.3)
+m = mapper.Mapper(b, "doid", "omim", 120.3, True)
 
 re_disease_link = re.compile("(.*?), ?(\d+) \(\d+\)")
 re_last_number  = re.compile(" \(\d\)$")
@@ -60,7 +60,6 @@ for document in open("omim.txt").read().split("*RECORD*")[1:]:
 		m.tagtext(docid, title, "title")
 		m.tagtext(docid, text, "text")
 
-m.debug_domapping()
 raw_mappings = m.getmapping()
 
 for docid in raw_mappings.iterkeys():

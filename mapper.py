@@ -16,7 +16,8 @@ class MappingData:
 	
 
 class Mapper:
-	def __init__(self, backtrack, dictionary, mapping, threshold = 0.0):
+	def __init__(self, backtrack, dictionary, mapping, threshold = 0.0, debug = False):
+		self._debug = debug
 		self._backtrack = backtrack
 		self._threshold = threshold
 		self._dictionary = dictionary
@@ -78,6 +79,8 @@ class Mapper:
 	def getmapping(self):
 		mapping = {}
 		page_entry = {}
+		if self._debug:
+			DEBUG = open("%s_scores.tsv" % self._mapping, "w")
 		for t in self._type_page_entry_count:
 			for page in self._type_page_entry_count[t]:
 				if page not in page_entry:
@@ -89,96 +92,43 @@ class Mapper:
 						tf = 100 * count / max_count
 						idf = math.log10(float(len(self._pages)) / (1 + len(self._type_entry_page[t][entry])))
 						score = tf * idf
-						# weight for score
 						score *= self._type_weight[t]
+						if self._debug:
+							DEBUG.write("%s\t%s\t%f\t%d\t%d\t%d\t%d\t%f\t%s\t%s\n" % (t, page, score, count, max_count, len(self._type_entry_page[t][entry]), len(self._pages), idf, entry, "|".join(self._page_entry_synonyms[page][entry])));
 						if entry not in page_entry[page]:
 							page_entry[page][entry] = 0
 						page_entry[page][entry] += score
 		
+		if self._debug:
+			DEBUG.close()
+			DEBUG = open("%s_%s_idf.tsv" % (self._mapping, self._dictionary), "w")
+			for t in self._type_entry_page:
+				for entry in self._type_entry_page[t]:
+					DEBUG.write("%s\t%d\t%d\t%s\n" % (t, len(self._type_entry_page[t][entry]), len(self._pages), entry))
+			DEBUG.close()
+			DEBUG = open("%s_%s_mapping_full.tsv" % (self._mapping, self._dictionary), "w")
+		
 		for page in page_entry:
-			score_entry = sorted(map(lambda x: (x[1],x[0]), page_entry[page].items()), reverse=True)
-			
+			score_entry = sorted(map(lambda x: (x[1],x[0]), page_entry[page].items()), reverse=True)	
 			i = 0
 			for score, entry in score_entry:
+				synonyms = []
+				if len(self._page_entry_synonyms[page][entry]) > 0:
+					synonyms = self._page_entry_synonyms[page][entry]
+				elif entry in self._entity_name:
+					synonyms.append("[%s]" % (self._entity_name[entry]))
+				else:
+					synonyms.append("[]")
 				if i == 0 and score >= self._threshold:
-					synonyms = []
-					if len(self._page_entry_synonyms[page][entry]) > 0:
-						synonyms = self._page_entry_synonyms[page][entry]
-					elif entry in self._entity_name:
-						synonyms.append("[%s]" % (self._entity_name[entry]))
-					else:
-						synonyms.append("[]")
 					m = MappingData(entry, score, synonyms)
 					mapping[page] = m
 				i += 1
-				
+				if self._debug:
+					DEBUG.write("%s\t%s\t%f\t%s\n" % (page, entry, score, "|".join(synonyms)))
+			
+		if self._debug:
+			DEBUG.close
+			print "Number of parsed %s entries in %s: %d\n" % (self._dictionary, self._mapping, len(self._pages))
+		
 		return mapping
-
-	def debug_domapping(self):
-		page_entry = {}
-		OUT1 = open("%s_scores.tsv" % self._mapping, "w")
-		for t in self._type_page_entry_count:
-			for page in self._type_page_entry_count[t]:
-				if page not in page_entry:
-					page_entry[page] = {}
-				if len(self._type_page_entry_count[t][page]):
-					max_count = float(max(self._type_page_entry_count[t][page].values()))
-					for entry in self._type_page_entry_count[t][page]:
-						count = self._type_page_entry_count[t][page][entry]
-						tf = 100 * count / max_count
-						idf = math.log10(float(len(self._pages)) / (1 + len(self._type_entry_page[t][entry])))
-						score = tf * idf
-						# weight for score
-						score *= self._type_weight[t]
-						OUT1.write("%s\t%s\t%f\t%d\t%d\t%d\t%d\t%f\t%s\t%s\n" % (t, page, score, count, max_count, len(self._type_entry_page[t][entry]), len(self._pages), idf, entry, "|".join(self._page_entry_synonyms[page][entry])))
-						if entry not in page_entry[page]:
-							page_entry[page][entry] = 0
-						page_entry[page][entry] += score
-		
-		OUT1.close()
-		
-		OUT1 = open("%s_%s_idf.tsv" % (self._mapping, self._dictionary), "w")
-		for t in self._type_entry_page:
-			for entry in self._type_entry_page[t]:
-				OUT1.write("%s\t%d\t%d\t%s\n" % (t, len(self._type_entry_page[t][entry]), len(self._pages), entry))
-		
-		OUT1.close()
-		
-		OUT1 = open("%s_%s_mapping_full.tsv" % (self._mapping, self._dictionary), "w")
-		OUT2 = open("%s_%s_mapping.tsv" % (self._mapping, self._dictionary), "w")
-		OUT3 = open("%s_%s_diversity_index.tsv" % (self._mapping, self._dictionary), "w")
-		OUT4 = open("%s_%s_mapping_diversity.tsv" % (self._mapping, self._dictionary), "w")
-		for page in page_entry:
-			score_entry = sorted(map(lambda x: (x[1],x[0]), page_entry[page].items()), reverse=True)
-			
-			i = 0
-			for score, entry in score_entry:
-				if i == 0 and score >= self._threshold:
-					OUT2.write("%f\t%s\t%s\t%s\n" % (score, page, entry, "|".join(self._page_entry_synonyms[page][entry])))
-				OUT1.write("%f\t%s\t%s\t%s\n" % (score, page, entry, "|".join(self._page_entry_synonyms[page][entry])))
-				i += 1
-		
-			seen = set()
-			scores = {}
-			for score, entry in score_entry:
-				if score >= self._threshold and not entry in seen:
-					seen.add(entry)
-					scores[entry] = score
-					for parent in self._backtrack.getparents(entry):
-						seen.add(parent)
-					for child in self._backtrack.getchildren(entry):
-						seen.add(child)
-			
-			sum_score = sum(scores.values())
-			if sum_score > 0:
-				diversity = 1.0/sum(map(lambda x: (x/sum_score)**2, scores.values()))
-				OUT3.write("%f\t%s\n" % (diversity, page))
-				for score, entry in sorted(map(lambda x: (x[1],x[0]), scores.items()))[:int((round(diversity)))]:
-					OUT4.write("%f\t%f\t%d\t%s\t%s\t%s\n" % (scores[entry], diversity, len(scores), page, entry, "|".join(self._page_entry_synonyms[page][entry])))
-		
-		OUT1.close()
-		OUT2.close()
-		OUT3.close()
-		OUT4.close()
-		
-		# print "Number of parsed %s entries in %s: %d\n" % (self._dictionary, self._mapping, len(self._pages))
+	
