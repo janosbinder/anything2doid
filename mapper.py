@@ -48,42 +48,50 @@ class Mapper:
 		text_type = original_text_type
 		matches = []
 		self._pages.add(page)
+		self._init_storage(text_type, page)
+			
 		for match in self._tag.GetMatches(text, page, [-26]):
 			start, end, entities = match
 			term = text[start:end+1].lower()
-			# ugly setting type to detech first match in the title
-			if start == 0 and original_text_type == 'title':
-				text_type = 'firstmatch'
-			else:
-				text_type = original_text_type
-
-			if text_type not in self._type_entry_page:
-				self._type_entry_page[text_type] = {}
-			if text_type not in self._type_page_entry_count:
-				self._type_page_entry_count[text_type] = {}
-			if page not in self._type_page_entry_count[text_type]:
-				self._type_page_entry_count[text_type][page] = {}
-			if page not in self._page_entry_synonyms:
-				self._page_entry_synonyms[page] = {}
 
 			for entity in entities:
 				entry = entity[1]
 				if self._backtrack.is_filtered(entry):
 					next
 				matches.append("%s\t%s\t%s\t%s" % (text_type, page, entry, term))
-				for d in self._backtrack.getparents_and_entry(entry):
-					if d not in self._type_entry_page[text_type]:
-						self._type_entry_page[text_type][d] = set()
-					self._type_entry_page[text_type][d].add(page)
-					if d not in self._type_page_entry_count[text_type][page]:
-						self._type_page_entry_count[text_type][page][d] = 1
-					else:
-						self._type_page_entry_count[text_type][page][d] += 1
-					if d not in self._page_entry_synonyms[page]:
-						self._page_entry_synonyms[page][d] = set()
+				for d in self._backtrack.getparents(entry):
+					self._store_entry(text_type, d, page)
+				
+				# ugly setting type to detech first match in the title				
+				if start == 0 and original_text_type == 'title':
+					text_type = 'firstmatch'
+					self._init_storage(text_type, page)	
+				self._store_entry(text_type, entry, page)
 				self._page_entry_synonyms[page][entry].add(term)
+				text_type = original_text_type	
 		return matches
 
+	def _store_entry(self, text_type, entry, page):
+		if entry not in self._type_entry_page[text_type]:
+			self._type_entry_page[text_type][entry]= set()
+		self._type_entry_page[text_type][entry].add(page)
+		if entry not in self._type_page_entry_count[text_type][page]:
+			self._type_page_entry_count[text_type][page][entry]= 1
+		else:
+			self._type_page_entry_count[text_type][page][entry]+= 1
+		if entry not in self._page_entry_synonyms[page]:
+			self._page_entry_synonyms[page][entry]= set()
+	
+	def _init_storage(self, text_type, page):
+		if text_type not in self._type_entry_page:
+			self._type_entry_page[text_type] = {}
+		if text_type not in self._type_page_entry_count:
+			self._type_page_entry_count[text_type] = {}
+		if page not in self._type_page_entry_count[text_type]:
+			self._type_page_entry_count[text_type][page] = {}
+		if page not in self._page_entry_synonyms:
+			self._page_entry_synonyms[page] = {}
+			
 	def getmapping(self):
 		mapping = {}
 		page_entry = {}
