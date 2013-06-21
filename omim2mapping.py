@@ -42,7 +42,7 @@ for line in open("genemap"):
 				ignored_omim.add(mim)
 	
 #ignore specific labels like beginning with ^ (moved to) and * (pure genes)
-re_info = re.compile("\\*FIELD\\* NO\n(\d+)\n\\*FIELD\\* TI\n(([#%+*^]?)\d+ .*?)\\*FIELD\\* TX\n(.*?)\\*FIELD\\*", re.DOTALL)
+re_info = re.compile("\\*FIELD\\* NO\n(\d+)\n\\*FIELD\\* TI\n(([#%+*^]?)\d+ (.*?))\\*FIELD\\* TX\n(.*?)\\*FIELD\\*", re.DOTALL)
 re_space_before_number = re.compile("([a-zA-Z]+)(\d+)")
 re_remove_with = re.compile(" WITH [^;]*?", re.DOTALL)
 
@@ -53,8 +53,8 @@ for document in open("omim.txt").read().split("*RECORD*")[1:]:
 	symbol = info.group(3).strip()
 	omim = int(info.group(1).strip())
 	if symbol != "^" and symbol != "*" and omim not in ignored_omim:
-		title  = re_space_before_number.sub("\\1 \\2", re_remove_with.sub(" ",info.group(2)).strip().replace(",", "").replace(";;", ". ").replace("\n", " "))
-		text   = re_space_before_number.sub("\\1 \\2", info.group(4)).strip().replace(",", "").replace("\n", " ")
+		title  = re_space_before_number.sub("\\1 \\2", re_remove_with.sub(" ",info.group(4)).strip().replace(",", "").replace(";;", ". ").replace("\n", " "))
+		text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 		docid  = "OMIM:%d" % omim
 		omim_title[docid] = title
 		m.tagtext(docid, title, "title")

@@ -27,7 +27,7 @@ class Mapper:
 		self._type_page_entry_count = {}
 		self._page_entry_synonyms = {}
 		self._tag = tagger.Tagger()
-		self._type_weight = {'text': 1, 'title': 5}
+		self._type_weight = {'firstmatch': 4, 'title': 2, 'text': 1}
 		self._tag.LoadNames("%s_entities.tsv" % self._dictionary, "%s_names_expanded.tsv" % self._dictionary)
 		self._entity_name = self.loadnames()
 	
@@ -44,20 +44,28 @@ class Mapper:
 				entity_name[id_entity[f[0]]] = f[1]
 		return entity_name
 			
-	def tagtext(self, page, text, text_type):
+	def tagtext(self, page, text, original_text_type):
+		text_type = original_text_type
 		matches = []
 		self._pages.add(page)
-		if text_type not in self._type_entry_page:
-			self._type_entry_page[text_type] = {}
-		if text_type not in self._type_page_entry_count:
-			self._type_page_entry_count[text_type] = {}
-		if page not in self._type_page_entry_count[text_type]:
-			self._type_page_entry_count[text_type][page] = {}
-		if page not in self._page_entry_synonyms:
-			self._page_entry_synonyms[page] = {}
 		for match in self._tag.GetMatches(text, page, [-26]):
 			start, end, entities = match
 			term = text[start:end+1].lower()
+			# ugly setting type to detech first match in the title
+			if start == 0 and original_text_type == 'title':
+				text_type = 'firstmatch'
+			else:
+				text_type = original_text_type
+
+			if text_type not in self._type_entry_page:
+				self._type_entry_page[text_type] = {}
+			if text_type not in self._type_page_entry_count:
+				self._type_page_entry_count[text_type] = {}
+			if page not in self._type_page_entry_count[text_type]:
+				self._type_page_entry_count[text_type][page] = {}
+			if page not in self._page_entry_synonyms:
+				self._page_entry_synonyms[page] = {}
+
 			for entity in entities:
 				entry = entity[1]
 				if self._backtrack.is_filtered(entry):
@@ -128,7 +136,7 @@ class Mapper:
 			
 		if self._debug:
 			DEBUG.close
-			print "Number of parsed %s entries in %s: %d\n" % (self._dictionary, self._mapping, len(self._pages))
+			sys.stderr.write("Number of parsed %s entries in %s: %d\n" % (self._dictionary, self._mapping, len(self._pages)))
 		
 		return mapping
 	
