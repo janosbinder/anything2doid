@@ -56,7 +56,7 @@ class Benchmark:
 
 class Mapper:
 	
-	def __init__(self, backtrack, dictionary, mapping, threshold = 0.0, debug = False):
+	def __init__(self, backtrack, dictionary, mapping, threshold = 0.0, debug = False, type_weight = {'firstmatch': 3, 'title': 2, 'text': 1}):
 		self._debug = debug
 		self._backtrack = backtrack
 		self._threshold = threshold
@@ -67,7 +67,7 @@ class Mapper:
 		self._type_page_entity_count = {}
 		self._page_entity_synonyms = {}
 		self._tag = tagger.Tagger()
-		self._type_weight = {'firstmatch': 3, 'title': 2, 'text': 1}
+		self._type_weight = type_weight
 		self._tag.LoadNames("%s_entities.tsv" % self._dictionary, "%s_names_expanded.tsv" % self._dictionary)
 		self._entity_name = self.load_names()
 	

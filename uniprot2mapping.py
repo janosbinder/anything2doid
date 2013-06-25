@@ -8,7 +8,7 @@ import backtrack
 import mapper
 
 b = backtrack.Backtrack("doid", "filter.tsv")
-m = mapper.Mapper(b, "doid", "uniprot", 0, True)
+m = mapper.Mapper(b, "doid", "uniprot", 200, True, {'firstmatch': 1, 'title': 1, 'text': 1})
 
 #ignore specific labels like beginning with ^ (moved to) and * (pure genes)
 #re_info = re.compile("ID (\w+).*?(CC   -!- DISEASE:(.*?)CC   -!-)?.*?(DR   (MIM[^.]))*", re.DOTALL)
