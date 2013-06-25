@@ -33,6 +33,8 @@ class Benchmark:
 		tp = 0
 		fp = 0
 		fn = 0
+		DEBUG = open("%s_wrong_mappings.tsv" % "omim", "w")
+		DEBUG.write("# Entity\tWrong mapped ID\tID\n")
 		for document in self._expected:
 			if document in mapping:
 				if mapping[document].entity == self._expected[document]:
@@ -40,8 +42,10 @@ class Benchmark:
 					tp += 1
 				else:
 					fp += 1
+					DEBUG.write("%s\t%s\t%s\n" % (document, mapping[document].entity, self._expected[document]))	
 			else:
 				fn += 1
+		DEBUG.close()
 		precision = 0.0
 		recall = 0.0
 		F1 = 0.0
@@ -52,7 +56,6 @@ class Benchmark:
 		if precision+recall > 0:
 			F1 = 2*(precision*recall)/(precision+recall)
 		return precision, recall, F1
-		return precision
 
 class Mapper:
 	

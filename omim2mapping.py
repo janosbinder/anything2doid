@@ -63,7 +63,7 @@ for document in open("omim.txt").read().split("*RECORD*")[1:]:
 
 raw_mapping = m.get_mapping()
 
-#print mapper.Benchmark("omim_benchmark.tsv").get_performance(raw_mapping)
+sys.stderr.write(str(mapper.Benchmark("omim_benchmark.tsv").get_performance(raw_mapping)))
 #sys.exit()
 
 for docid in raw_mapping.iterkeys():
