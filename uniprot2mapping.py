@@ -8,7 +8,7 @@ import backtrack
 import mapper
 
 b = backtrack.Backtrack("doid", "filter.tsv")
-m = mapper.Mapper(b, "doid", "uniprot", 201)
+m = mapper.Mapper(b, "doid", "uniprot", 0, True)
 
 #ignore specific labels like beginning with ^ (moved to) and * (pure genes)
 #re_info = re.compile("ID (\w+).*?(CC   -!- DISEASE:(.*?)CC   -!-)?.*?(DR   (MIM[^.]))*", re.DOTALL)
@@ -46,14 +46,14 @@ for document in re_document.findall(open("uniprot_sprot.dat").read()):
 		page = "%s#%s" % (protein, omim)
 		if len(sentences) == 0:
 			print "%s\t%s" % (page, text)
-		m.tagtext(page, sentences[0], "title")
-		m.tagtext(page, ". ".join(sentences[1:]), "text")
+		m.tag_text(page, sentences[0], "title")
+		m.tag_text(page, ". ".join(sentences[1:]), "text")
 		i += 1
 	for linkout in linkouts:
 		OUT2.write("%s\t%d\tDR-FIELD\n" % (protein, int(linkout)))
 OUT2.close()
 
-raw_mappings = m.getmapping()
+raw_mappings = m.get_mapping()
 
 lowest = 10000
 highest = 0
@@ -89,7 +89,7 @@ for line in open("%s/stitch_names.tsv" % dictionary_path):
 			stars = 2 + 3 * (float(mapping.score - lowest) / ((highest - lowest) * 0.32))
 			if stars > 5.0:
 				stars = 5.0
-			doid = mapping.entry
+			doid = mapping.entity
 			print "%s\t%s\t-26\t%s\tUniProtKB\tTEXT\t%s\tTRUE\t%s" % (serial_type[serial], serial_entity[serial], doid, stars, linkout)
 			for parent in b.getparents(doid):
 				print "%s\t%s\t-26\t%s\tUniProtKB\tTEXT\t%s\tFALSE\t%s" % (serial_type[serial], serial_entity[serial], parent, stars, linkout)

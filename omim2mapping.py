@@ -4,11 +4,12 @@ import os
 import re
 import sys
 import math
+
 import backtrack
 import mapper
 
 b = backtrack.Backtrack("doid", "filter.tsv")
-m = mapper.Mapper(b, "doid", "omim", 120.3, True)
+m = mapper.Mapper(b, "doid", "omim", 196.427, True)
 
 re_disease_link = re.compile("(.*?), ?(\d+) \(\d+\)")
 re_last_number  = re.compile(" \(\d\)$")
@@ -57,11 +58,14 @@ for document in open("omim.txt").read().split("*RECORD*")[1:]:
 		text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 		docid  = "OMIM:%d" % omim
 		omim_title[docid] = title
-		m.tagtext(docid, title, "title")
-		m.tagtext(docid, text, "text")
+		m.tag_text(docid, title, "title")
+		m.tag_text(docid, text, "text")
 
-raw_mappings = m.getmapping()
+raw_mapping = m.get_mapping()
 
-for docid in raw_mappings.iterkeys():
-	data = raw_mappings[docid]
-	print "%f\t%s\t%s\t%s\t%s" % (data.score, docid, data.entry, "|".join(data.synonyms), omim_title[docid])
+#print mapper.Benchmark("omim_benchmark.tsv").get_performance(raw_mapping)
+#sys.exit()
+
+for docid in raw_mapping.iterkeys():
+	data = raw_mapping[docid]
+	print "%f\t%s\t%s\t%s\t%s" % (data.score, docid, data.entity, "|".join(data.synonyms), omim_title[docid])
