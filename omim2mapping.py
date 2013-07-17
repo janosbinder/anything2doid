@@ -158,16 +158,17 @@ if __name__ == "__main__":
 		symbol = info.group(3).strip()
 		omim = int(info.group(1).strip())
 		title = info.group(4)
+		titles = parse_title(title)
 		if symbol != "^" and symbol != "*" and omim not in ignored_omim:
 			text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 			docid  = "OMIM:%d" % omim
 			#sys.stderr.write("Parsing %s \n" % omim)
-			omim_title[docid] = ";; ".join(parse_title(title))
+			omim_title[docid] = ";; ".join(titles)
 			i = 0
-			for t in parse_title(title):
+			for t in titles:
 				TITLES.write("%s\t#%s\t%s\n" % (docid, i, t))
 				i += 1		
-			m.tag_text(docid, omim_title[docid], "title")
+			m.tag_text(docid, ";; ".join(titles), "title")
 			m.tag_text(docid, text, "text")
 	TITLES.close()
 	
