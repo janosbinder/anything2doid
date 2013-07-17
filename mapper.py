@@ -70,6 +70,7 @@ class Mapper:
 		self._type_page_entity_count = {}
 		self._page_entity_synonyms = {}
 		self._tag = tagger.Tagger()
+		self._max_tokens = 15
 		self._type_weight = type_weight
 		self._tag.LoadNames("%s_entities.tsv" % self._dictionary, "%s_names_expanded.tsv" % self._dictionary)
 		self._entity_name = self.load_names()
@@ -93,7 +94,7 @@ class Mapper:
 		self._pages.add(page)
 		self._init_storage(text_type, page)
 			
-		for match in self._tag.GetMatches(text, page, [-26]):
+		for match in self._tag.GetMatches(text, page, [-26], self._max_tokens):
 			start, end, entities = match
 			term = text[start:end+1].lower()
 
