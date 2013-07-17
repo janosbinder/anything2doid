@@ -94,7 +94,7 @@ class Mapper:
 		self._pages.add(page)
 		self._init_storage(text_type, page)
 			
-		for match in self._tag.GetMatches(text, page, [-26], self._max_tokens):
+		for match in self._tag.GetMatches(text, page, [-26], max_tokens = self._max_tokens):
 			start, end, entities = match
 			term = text[start:end+1].lower()
 
