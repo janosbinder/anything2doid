@@ -53,18 +53,20 @@ def parse_title(title):
 		# remove everything with "With ..."
 		it = re_remove_with.sub(" ", it)
 		
-		# check for acronyms, and split them
+		# check for acronyms, and handle them as a title
 		acronym = ""
 		a = it.split("; ")
 		if(len(a) > 1):
 			acronym = a[1]
 			it = a[0]
 		
+		new_titles = []
+		if (acronym != ""):
+			new_titles.append(acronym)
+		
 		# reverse titles with adjectives, and generate two varians if there are multiple adjectives
 		parts = it.split(", ")
-		
-		new_titles = []
-		
+								
 		if(len(parts) > 1):
 			ending = ""
 			if(len(parts) > 2):
@@ -83,9 +85,6 @@ def parse_title(title):
 			new_titles.append(it)
 		
 		for t in new_titles:
-			if (acronym != ""):
-				t = "%s; %s" % (t, acronym)
-				
 			# change Roman numbers to arabic numbers
 			for number in roman_arabic:
 				roman_pattern = re.compile(r' ' + number)
@@ -101,7 +100,7 @@ def parse_title(title):
 						t = pattern.sub(" " + roman_arabic[number] + "\\1", t, 1)
 						
 				
-			# split integer and letter e.g. type 1A -> type 1 A
+			# split integer and letter e.g. type 1A -> type 1 A, and acronyms like ABC2 to ABC 2
 			t = re_space_before_number.sub("\\1 \\2", t)
 			if(re_number_letter_separator.search(t)):
 				titles.append(re_number_letter_separator.sub("\\1",t))
@@ -169,7 +168,7 @@ if __name__ == "__main__":
 				TITLES.write("%s\t#%s\t%s\n" % (docid, i, t))
 				i += 1		
 			m.tag_text(docid, ";; ".join(titles), "title")
-			m.tag_text(docid, text, "text")
+			#m.tag_text(docid, text, "text")
 	TITLES.close()
 	
 	raw_mapping = m.get_mapping()
