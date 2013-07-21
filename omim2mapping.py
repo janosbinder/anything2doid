@@ -44,7 +44,7 @@ def parse_title(title):
 	
 	for it in intermediate_titles:
 		# skip empty lines
-		if(it.strip() == "" or it.strip() == "\n"):
+		if it.strip() == "" or it.strip() == "\n":
 			continue
 		
 		# remove new lines and trailing whitespaces
@@ -56,47 +56,48 @@ def parse_title(title):
 		# check for acronyms, and handle them as a title
 		acronym = ""
 		a = it.split("; ")
-		if(len(a) > 1):
+		if len(a) > 1:
 			acronym = a[1]
 			it = a[0]
 		
 		new_titles = []
-		if (acronym != ""):
-			new_titles.append(acronym)
-		
+
 		# reverse titles with adjectives, and generate two varians if there are multiple adjectives
 		parts = it.split(", ")
 								
-		if(len(parts) > 1):
+		if len(parts) > 1 and parts[1].find("TYPE") < 0:
 			ending = ""
 			if(len(parts) > 2):
 				ending = " " + " ".join(parts[2:])
 		
 			adjectives = parts[1].split(" ")			
-			if(len(adjectives) == 2 and adjectives[0].find("TYPE") < 0 and adjectives[1].find("TYPE") < 0):
-				new_titles.append("%s %s %s%s" % (adjectives[0], adjectives[1], parts[0], ending))
-				new_titles.append("%s %s %s%s" % (adjectives[1], adjectives[0], parts[0], ending))
+			if len(adjectives) == 2:
+				new_titles.append("%s %s %s%s" % (adjectives[0], adjectives[1], parts[0], ending)) # Permutating adjectives: (1, 2)
+				new_titles.append("%s %s %s%s" % (adjectives[1], adjectives[0], parts[0], ending)) # Permutating adjectives: (2, 1)
 			else:
-				new_titles.append("%s %s%s" % (parts[1], parts[0], ending))
+				new_titles.append("%s %s%s" % (parts[1], parts[0], ending)) # More than two adjectives or just one results in a permuation of the noun and adjective only.
 
-			# store original title?
-			new_titles.append("%s %s%s" % (parts[0], parts[1], ending))
-		else:
-			new_titles.append(it)
-		
+		# store original title?
+		new_titles.append(it.replace(",", ""))
+
+			
 		for t in new_titles:
 			# change Roman numbers to arabic numbers
 			for number in roman_arabic:
 				roman_pattern = re.compile(r' ' + number)
 				for m in roman_pattern.finditer(t):
-					# apply the pattern depening where did it match on the string
-					
-					# end match
-					if(len(t) == m.end()):
+					# apply the pattern depening on where did matched.
+					if len(t) == m.end():
+						# Match of roman number at the end of title.
 						pattern = re.compile(r' ' + number)	
 						t = pattern.sub(" " + roman_arabic[number], t, 1)
+					elif len(t) - 1 == m.end():
+						# Match of roman number one character before at the end of title.
+						pattern = re.compile(r' ' + number + r'(( \w)|([a-zA-H]))')	
+						t = pattern.sub(" " + roman_arabic[number] + "\\1", t, 1)
 					else:
-						pattern = re.compile(r' ' + number + r'(( [\w])|([A-H;]))')	
+						# Match but not at the end.
+						pattern = re.compile(r' ' + number + r'(( \w)|([a-zA-H]?:(\w+)))')	
 						t = pattern.sub(" " + roman_arabic[number] + "\\1", t, 1)
 						
 				
@@ -106,13 +107,16 @@ def parse_title(title):
 				titles.append(re_number_letter_separator.sub("\\1",t))
 			if(t.strip() != ""):
 				titles.append(t)
+	# add acronyms
+	if (acronym != ""):
+		new_titles.append(acronym)
 		
 	return titles
 
 if __name__ == "__main__":
 	
 	b = backtrack.Backtrack("doid", "filter.tsv")
-	m = mapper.Mapper(b, "doid", "omim", 196.427, True)
+	m = mapper.Mapper(b, "doid", "omim", 0, do_backtrack = False, debug = True)
 	
 	re_disease_link = re.compile("(.*?), ?(\d+) \(\d+\)")
 	re_last_number  = re.compile(" \(\d\)$")
@@ -149,26 +153,41 @@ if __name__ == "__main__":
 				if len(links) > 1:
 					ignored_omim.add(mim)
 		
-	omim_title           = {}
+	omim_title = {}
+	
+	#DEBUG_FILTER = set()
+	#DEBUG_FILTER.add(612098)
+	#DEBUG_FILTER.add(611878)
+	#DEBUG_FILTER.add(613721)
+	#DEBUG_FILTER.add(601318)
+	#DEBUG_FILTER.add(125700)
+	#DEBUG_FILTER.add(604377)
+	#DEBUG_FILTER.add(273120)
 	
 	TITLES = open("omim_titles.tsv", "w")
 	for document in open("omim.txt").read().split("*RECORD*")[1:]:
 		info = re_info.search(document)
 		symbol = info.group(3).strip()
 		omim = int(info.group(1).strip())
+		#if omim not in DEBUG_FILTER:
+		#	continue
 		title = info.group(4)
 		titles = parse_title(title)
 		if symbol != "^" and symbol != "*" and omim not in ignored_omim:
 			text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 			docid  = "OMIM:%d" % omim
-			#sys.stderr.write("Parsing %s \n" % omim)
 			omim_title[docid] = ";; ".join(titles)
 			i = 0
 			for t in titles:
 				TITLES.write("%s\t#%s\t%s\n" % (docid, i, t))
-				i += 1		
-			m.tag_text(docid, ";; ".join(titles), "title")
-			#m.tag_text(docid, text, "text")
+				#print >> sys.stderr, omim, t
+				#print >> sys.stderr, omim, ";".join(m.tag_text(docid, t, "title"))
+				if i == 0:
+					m.tag_text(docid, t, "firsttitle")
+				else:
+					m.tag_text(docid, t, "title")
+				i += 1
+			m.tag_text(docid, text, "text")
 	TITLES.close()
 	
 	raw_mapping = m.get_mapping()

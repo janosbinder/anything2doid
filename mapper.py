@@ -59,9 +59,10 @@ class Benchmark:
 
 class Mapper:
 	
-	def __init__(self, backtrack, dictionary, mapping, threshold = 0.0, debug = False, type_weight = {'firstmatch': 3, 'title': 2, 'text': 1}):
+	def __init__(self, backtrack, dictionary, mapping, threshold = 0.0, do_backtrack = False, debug = False, type_weight = {'firsttitle': 3, 'title': 2, 'text': 1}):
 		self._debug = debug
 		self._backtrack = backtrack
+		self._do_backtrack = do_backtrack
 		self._threshold = threshold
 		self._dictionary = dictionary
 		self._mapping = mapping
@@ -100,16 +101,18 @@ class Mapper:
 
 			for e in entities:
 				entity = e[1]
-				if self._backtrack.is_filtered(entity):
+				if self._do_backtrack and self._backtrack.is_filtered(entity):
 					next
-				matches.append("%s\t%s\t%s\t%s" % (text_type, page, entity, term))
-				for d in self._backtrack.getparents(entity):
-					self._store_entity(text_type, d, page)
+				if self._do_backtrack:
+					for d in self._backtrack.getparents(entity):
+						matches.append("%s\t%s\t%s\t%s\t%d\t%d" % (text_type, page, d, term, start, end))
+						self._store_entity(text_type, d, page)
 				
 				# ugly setting type to detech first match in the title				
-				if start == 0 and original_text_type == 'title':
-					text_type = 'firstmatch'
-					self._init_storage(text_type, page)	
+				#if start == 0 and original_text_type == 'title':
+				#	text_type = 'firstmatch'
+				#	self._init_storage(text_type, page)	
+				matches.append("%s\t%s\t%s\t%s\t%d\t%d" % (text_type, page, entity, term, start, end))
 				self._store_entity(text_type, entity, page)
 				self._page_entity_synonyms[page][entity].add(term)
 				text_type = original_text_type	
