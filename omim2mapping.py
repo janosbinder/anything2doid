@@ -6,31 +6,19 @@ import sys
 import math
 
 import backtrack
-import mapper
+import omimmapper as mapper
 
 def parse_title(title):
-	re_space_before_number = re.compile("([a-zA-Z]{2,})(\d+)") # to separate acronyms from numbers
-	re_number_letter_separator = re.compile("(\d+)([a-zA-Z])") # to separate type 1a to type 1
 	re_remove_with = re.compile(",? WITH [^;]*?", re.DOTALL)
 	re_acronym_and_newline = re.compile("; ([a-zA-Z0-9]+) ?\n", re.DOTALL)
 
 	original_titles = title.split(";;")
 	titles = []
+	derived_titles = []
 	intermediate_titles = []
-	
-	roman_arabic ={
-			'I': '1',
-			'II': '2',
-			'III': '3',
-			'IV': '4',
-			'V': '5',
-			'VI': '6',
-			'VII': '7',
-			'VIII': '8',
-			'IX': '9',
-			'X': '10'
-			}
-	
+	# TODO: handle multiple diseases in a separate list. These are with AND
+
+
 	# split the titles (disgusting OMIM format)
 	i = 0
 	for t in original_titles:
@@ -59,8 +47,6 @@ def parse_title(title):
 		if len(a) > 1:
 			acronym = a[1]
 			it = a[0]
-		
-		new_titles = []
 
 		# reverse titles with adjectives, and generate two varians if there are multiple adjectives
 		parts = it.split(", ")
@@ -72,45 +58,64 @@ def parse_title(title):
 		
 			adjectives = parts[1].split(" ")			
 			if len(adjectives) == 2:
-				new_titles.append("%s %s %s%s" % (adjectives[0], adjectives[1], parts[0], ending)) # Permutating adjectives: (1, 2)
-				new_titles.append("%s %s %s%s" % (adjectives[1], adjectives[0], parts[0], ending)) # Permutating adjectives: (2, 1)
+				derived_titles.append("%s %s %s%s" % (adjectives[0], adjectives[1], parts[0], ending)) # Permutating adjectives: (1, 2)
+				derived_titles.append("%s %s %s%s" % (adjectives[1], adjectives[0], parts[0], ending)) # Permutating adjectives: (2, 1)
 			else:
-				new_titles.append("%s %s%s" % (parts[1], parts[0], ending)) # More than two adjectives or just one results in a permuation of the noun and adjective only.
+				derived_titles.append("%s %s%s" % (parts[1], parts[0], ending)) # More than two adjectives or just one results in a permuation of the noun and adjective only.
 
-		# store original title?
-		new_titles.append(it.replace(",", ""))
-
+		# store original title
+		titles.append(it.replace(",", ""))
+		# store acronyms
+		if (acronym != ""):
+			titles.append(acronym)
 			
-		for t in new_titles:
-			# change Roman numbers to arabic numbers
-			for number in roman_arabic:
-				roman_pattern = re.compile(r' ' + number)
-				for m in roman_pattern.finditer(t):
-					# apply the pattern depening on where did matched.
-					if len(t) == m.end():
-						# Match of roman number at the end of title.
-						pattern = re.compile(r' ' + number)	
-						t = pattern.sub(" " + roman_arabic[number], t, 1)
-					elif len(t) - 1 == m.end():
-						# Match of roman number one character before at the end of title.
-						pattern = re.compile(r' ' + number + r'(( \w)|([a-zA-H]))')	
-						t = pattern.sub(" " + roman_arabic[number] + "\\1", t, 1)
-					else:
-						# Match but not at the end.
-						pattern = re.compile(r' ' + number + r'(( \w)|([a-zA-H]?:(\w+)))')	
-						t = pattern.sub(" " + roman_arabic[number] + "\\1", t, 1)
-						
+	return (handle_numbers(titles), handle_numbers(derived_titles))
+			
+
+
+def handle_numbers(original_titles):
+	re_space_before_number = re.compile("([a-zA-Z]{2,})(\d+)") # to separate acronyms from numbers
+	re_number_letter_separator = re.compile("(\d+)([a-zA-Z])") # to separate type 1a to type 1
+	roman_arabic = {
+		'I': '1',
+		'II': '2',
+		'III': '3',
+		'IV': '4',
+		'V': '5',
+		'VI': '6',
+		'VII': '7',
+		'VIII': '8',
+		'IX': '9',
+		'X': '10'
+		}
+	
+	
+	titles = []
+	for t in original_titles:
+		# change Roman numbers to arabic numbers
+		for number in roman_arabic:
+			roman_pattern = re.compile(r' ' + number)
+			for m in roman_pattern.finditer(t):
+				# apply the pattern depening on where did matched.
+				if len(t) == m.end():
+					# Match of roman number at the end of title.
+					pattern = re.compile(r' ' + number)	
+					t = pattern.sub(" " + roman_arabic[number], t, 1)
+				elif len(t) - 1 == m.end():
+					# Match of roman number one character before at the end of title.
+					pattern = re.compile(r' ' + number + r'(( \w)|([a-zA-H]))')	
+					t = pattern.sub(" " + roman_arabic[number] + "\\1", t, 1)
+				else:
+					# Match but not at the end.
+					pattern = re.compile(r' ' + number + r'(( \w)|([a-zA-H]?:(\w+)))')	
+					t = pattern.sub(" " + roman_arabic[number] + "\\1", t, 1)
 				
-			# split integer and letter e.g. type 1A -> type 1 A, and acronyms like ABC2 to ABC 2
-			t = re_space_before_number.sub("\\1 \\2", t)
-			if(re_number_letter_separator.search(t)):
-				titles.append(re_number_letter_separator.sub("\\1",t))
-			if(t.strip() != ""):
-				titles.append(t)
-	# add acronyms
-	if (acronym != ""):
-		new_titles.append(acronym)
-		
+		# split integer and letter e.g. type 1A -> type 1 A, and acronyms like ABC2 to ABC 2
+		t = re_space_before_number.sub("\\1 \\2", t)
+		if(re_number_letter_separator.search(t)):
+			titles.append(re_number_letter_separator.sub("\\1",t))
+		if(t.strip() != ""):
+			titles.append(t)
 	return titles
 
 if __name__ == "__main__":
@@ -163,7 +168,8 @@ if __name__ == "__main__":
 	#DEBUG_FILTER.add(125700)
 	#DEBUG_FILTER.add(604377)
 	#DEBUG_FILTER.add(273120)
-	
+		
+	MATCHES = open("omim_matches.tsv", "w")
 	TITLES = open("omim_titles.tsv", "w")
 	for document in open("omim.txt").read().split("*RECORD*")[1:]:
 		info = re_info.search(document)
@@ -172,23 +178,30 @@ if __name__ == "__main__":
 		#if omim not in DEBUG_FILTER:
 		#	continue
 		title = info.group(4)
-		titles = parse_title(title)
+		titles, derived_titles = parse_title(title)
 		if symbol != "^" and symbol != "*" and omim not in ignored_omim:
 			text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 			docid  = "OMIM:%d" % omim
 			omim_title[docid] = ";; ".join(titles)
 			i = 0
 			for t in titles:
-				TITLES.write("%s\t#%s\t%s\n" % (docid, i, t))
+				TITLES.write("%s\ttitle\t#%s\t%s\n" % (docid, i, t))
 				#print >> sys.stderr, omim, t
 				#print >> sys.stderr, omim, ";".join(m.tag_text(docid, t, "title"))
-				if i == 0:
-					m.tag_text(docid, t, "firsttitle")
-				else:
-					m.tag_text(docid, t, "title")
+				matches = m.tag_text(docid, t, "title")
+				for te in matches:
+					MATCHES.write("%s\t%s\t%s\n" % (docid, t, te))
 				i += 1
-			m.tag_text(docid, text, "text")
+			for dt in derived_titles:
+				TITLES.write("%s\tderived_title\t#%s\t%s\n" % (docid, i, dt))
+				#print >> sys.stderr, omim, ";".join(m.tag_text(docid, dt, "derived_title"))
+				matches = m.tag_text(docid, dt, "derived_title")
+				for te in matches:
+					MATCHES.write("%s\t%s\t%s\n" % (docid, dt, te))
+				i += 1				
+			#m.tag_text(docid, text, "text")
 	TITLES.close()
+	MATCHES.close()
 	
 	raw_mapping = m.get_mapping()
 	

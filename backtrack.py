@@ -40,5 +40,15 @@ class Backtrack:
 		return self._child_parent[entry].union([entry])
 	def getchildren(self, entry):
 		return self._parent_child[entry]
+	def is_child(self, child, parent):
+		if parent in self.getparents(child):
+			return True
+		else:
+			return False
+	def is_parent(self, child, parent):
+		if child in self.getchildren(parent):
+			return True
+		else:
+			return False
 	def is_filtered(self, entry):
 		return True if entry in self._entry_filter else False
