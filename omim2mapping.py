@@ -8,14 +8,17 @@ import math
 import backtrack
 import omimmapper as mapper
 
+DEBUG_MODE = False
+
 def parse_title(title):
-	re_remove_with = re.compile(",? WITH [^;]*?", re.DOTALL)
+	re_remove_with = re.compile(",? WITH [^;]*", re.DOTALL)
 	re_acronym_and_newline = re.compile("; ([a-zA-Z0-9]+) ?\n", re.DOTALL)
 
 	original_titles = title.split(";;")
 	titles = []
 	derived_titles = []
 	intermediate_titles = []
+	and_titles = []
 	# TODO: handle multiple diseases in a separate list. These are with AND
 
 
@@ -39,7 +42,20 @@ def parse_title(title):
 		it = it.replace("\n", " ").strip()
 		
 		# remove everything with "With ..."
-		it = re_remove_with.sub(" ", it)
+		it = re_remove_with.sub("", it)
+		
+		# handle diseases with AND
+		if it.find(" AND ") > 0:
+			parts = it.split(" AND ")
+			lastpart = parts.pop()
+			for part in parts:
+				tparts = part.split(", ")
+				and_titles.extend(list(tparts))
+			#firstpart, lastpart = it.split(" AND ", 1)
+			#tparts = firstpart.split(", ")
+			#tparts.append(lastpart)
+			#and_titles.extend(list(tparts))
+			and_titles.append(lastpart)
 		
 		# check for acronyms, and handle them as a title
 		acronym = ""
@@ -69,7 +85,7 @@ def parse_title(title):
 		if (acronym != ""):
 			titles.append(acronym)
 			
-	return (handle_numbers(titles), handle_numbers(derived_titles))
+	return (handle_numbers(titles), handle_numbers(derived_titles), and_titles)
 			
 
 
@@ -121,13 +137,14 @@ def handle_numbers(original_titles):
 if __name__ == "__main__":
 	
 	b = backtrack.Backtrack("doid", "filter.tsv")
-	m = mapper.Mapper(b, "doid", "omim", 0, do_backtrack = False, debug = True)
+	m = mapper.Mapper(b, "doid", "omim", 0, do_backtrack = False, debug = DEBUG_MODE)
 	
 	re_disease_link = re.compile("(.*?), ?(\d+) \(\d+\)")
 	re_last_number  = re.compile(" \(\d\)$")
 	re_remove_chars = re.compile("[{}\[\]|]")
 	
 	ignored_omim = set()
+	#ignored_omim = set()
 	
 	#ignore specific labels like beginning with ^ (moved to) and * (pure genes)
 	re_info = re.compile("\\*FIELD\\* NO\n(\d+)\n\\*FIELD\\* TI\n(([#%+*^]?)\d+ (.*?))\\*FIELD\\* TX\n(.*?)\\*FIELD\\*", re.DOTALL)
@@ -160,14 +177,17 @@ if __name__ == "__main__":
 		
 	omim_title = {}
 	
-	#DEBUG_FILTER = set()
-	#DEBUG_FILTER.add(612098)
-	#DEBUG_FILTER.add(611878)
-	#DEBUG_FILTER.add(613721)
-	#DEBUG_FILTER.add(601318)
-	#DEBUG_FILTER.add(125700)
-	#DEBUG_FILTER.add(604377)
-	#DEBUG_FILTER.add(273120)
+	if DEBUG_MODE:
+		DEBUG_FILTER = set()
+		#DEBUG_FILTER.add(144700)
+		#DEBUG_FILTER.add(608569)
+		#DEBUG_FILTER.add(614684)
+		#DEBUG_FILTER.add(615087)
+		#DEBUG_FILTER.add(106150)
+		#DEBUG_FILTER.add(159900)
+		#DEBUG_FILTER.add(253320)
+		#DEBUG_FILTER.add(136120)
+		#DEBUG_FILTER.add(600046)
 		
 	MATCHES = open("omim_matches.tsv", "w")
 	TITLES = open("omim_titles.tsv", "w")
@@ -175,30 +195,41 @@ if __name__ == "__main__":
 		info = re_info.search(document)
 		symbol = info.group(3).strip()
 		omim = int(info.group(1).strip())
-		#if omim not in DEBUG_FILTER:
-		#	continue
+		if DEBUG_MODE and (omim not in DEBUG_FILTER):
+			continue
 		title = info.group(4)
-		titles, derived_titles = parse_title(title)
+		titles, derived_titles, and_titles = parse_title(title)
 		if symbol != "^" and symbol != "*" and omim not in ignored_omim:
 			text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 			docid  = "OMIM:%d" % omim
 			omim_title[docid] = ";; ".join(titles)
-			i = 0
-			for t in titles:
-				TITLES.write("%s\ttitle\t#%s\t%s\n" % (docid, i, t))
-				#print >> sys.stderr, omim, t
-				#print >> sys.stderr, omim, ";".join(m.tag_text(docid, t, "title"))
-				matches = m.tag_text(docid, t, "title")
-				for te in matches:
-					MATCHES.write("%s\t%s\t%s\n" % (docid, t, te))
-				i += 1
-			for dt in derived_titles:
-				TITLES.write("%s\tderived_title\t#%s\t%s\n" % (docid, i, dt))
-				#print >> sys.stderr, omim, ";".join(m.tag_text(docid, dt, "derived_title"))
-				matches = m.tag_text(docid, dt, "derived_title")
-				for te in matches:
-					MATCHES.write("%s\t%s\t%s\n" % (docid, dt, te))
-				i += 1				
+			if len(and_titles) == 0:
+				i = 0
+				for t in titles:
+					TITLES.write("%s\ttitle\t#%s\t%s\n" % (docid, i, t))
+					#print >> sys.stderr, omim, t
+					#print >> sys.stderr, omim, ";".join(m.tag_text(docid, t, "title"))
+					matches = m.tag_text(docid, t, "title")
+					for te in matches:
+						MATCHES.write("%s\t%s\t%s\n" % (docid, t, te))
+					i += 1
+				for dt in derived_titles:
+					TITLES.write("%s\tderived_title\t#%s\t%s\n" % (docid, i, dt))
+					#print >> sys.stderr, omim, ";".join(m.tag_text(docid, dt, "derived_title"))
+					matches = m.tag_text(docid, dt, "derived_title")
+					for te in matches:
+						MATCHES.write("%s\t%s\t%s\n" % (docid, dt, te))
+					i += 1
+			else:
+				i = 0
+				for at in and_titles:
+					and_id = "%s#%d" % (docid, i)
+					omim_title[and_id] = at
+					TITLES.write("%s\tand_title\t#%s\t%s\n" % (and_id, i, at))
+					matches = m.tag_text(and_id, at, "and_title")
+					for te in matches:
+						MATCHES.write("%s\t%s\t%s\n" % (and_id, at, te))				
+					i += 1
 			#m.tag_text(docid, text, "text")
 	TITLES.close()
 	MATCHES.close()

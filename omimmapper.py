@@ -9,6 +9,8 @@ sys.path.append("/home/purple1/textmining/tagger/")
 import tagger
 import backtrack
 
+ignored_entities = set(["DOID:4", "DOID:225"])
+
 class MappingData:
 	
 	def __init__(self, entity, score, synonyms):
@@ -69,6 +71,9 @@ class Mapper:
 			term = text[start:end+1].lower()
 			for e in entities:
 				entity = e[1]
+				#ignore disease or syndrome
+				if entity in ignored_entities:
+					continue
 				matches.append(TaggedEntity(entity, start, end, term, text_type))
 				self._page_entity[page].append(TaggedEntity(entity, start, end, term, text_type))
 		return matches
@@ -77,10 +82,18 @@ class Mapper:
 		mapping = {}
 		for page in self._page_entity:
 			tagged_entities = self._page_entity[page]
+			seen = set()
+			
 			ignore = False
 			candidates = []
 			i=0
 			while i < len(tagged_entities):
+				# do not parse duplicate matches
+				if tagged_entities[i].entity in seen:
+					i+=1
+					continue
+				seen.add(tagged_entities[i].entity)
+
 				# do not add if any children has been tagged
 				j=0
 				while j < len(tagged_entities):
@@ -93,38 +106,80 @@ class Mapper:
 				if ignore != True:
 					candidates.append(tagged_entities[i])
 				i+=1
-						
-			if len(candidates) > 1:
-				# check position of matches, keep if matches from the first character
-				candidates = filter(lambda x: True if x.start == 0 else False, candidates)
-				#new_candidates = []
-				#for candidate in candidates:
-				#	if candidate.start == 0:
-				#		new_candidates.append(candidate)
-				#candidates = new_candidates
+				ignore = False
 			
-			if len(candidates) > 1:
-				# check whether it is an original title, keep if it is the only title
-				candidates = filter(lambda x: True if x.text_type == "title" else False, candidates)
-				#new_candidates = []
-				#for candidate in candidates:
-				#	if candidate.text_type == "title":
-				#		new_candidates.append(candidate)
-				#candidates = new_candidates
-			
-			if len(candidates) > 1:
-				# get rid of duplicate entries
-				seen = set()
-				new_candidates = []
-				for candidate in candidates:
-					if candidate.entity in seen:
-						continue
-					seen.add(candidate.entity)
-					new_candidates.append(candidate)
-				candidates = new_candidates
+			if self._debug:
+				print "Original tagged ID's for %s were:" % (page)
+				original = []
+				for te in tagged_entities:
+					original.append(te.entity)
+				print "%s" % (",".join(original))
+				print "After filtering parents:"
+				altered = []
+				for c in candidates:
+					altered.append(c.entity)
+				print "%s" % (",".join(altered))
 				
 			if len(candidates) > 1:
+				# ignore the page if the same term name has been tagged (e.g.: dystonia in DOID:543 and DOID:544)
+				term_names = {}
+				for candidate in candidates:
+					if candidate.term in term_names and term_names[candidate.term] != candidate.entity:
+						ignore = True
+						break
+					term_names[candidate.term] = candidate.entity
+				if self._debug:
+					if ignore:
+						print "Unfortunately a term name has been associated with multiple entities, ignoring page"
+				
+			if len(candidates) > 1:
+				# check position of matches, keep if matches from the first character
+				cs = filter(lambda x: True if x.start == 0 else False, candidates)
+				if(len(cs) != 0):
+					candidates = cs
+				if self._debug:
+					altered = []
+					print "After filtering titles not starting at position 0"
+					for c in candidates:
+						altered.append(c.entity)
+						print "%s" % (",".join(altered))
+			
+			if len(candidates) > 1 and len(filter(lambda x: True if x.text_type == "title" else False, candidates)) > 0:
+				# check whether it is an original title, keep if it is the only title
+				cs = filter(lambda x: True if x.text_type == "title" else False, candidates)
+				if(len(cs) != 0):
+					candidates = cs			
+				if self._debug:
+					altered = []
+					print "After filtering out derived titles"
+					for c in candidates:
+						altered.append(c.entity)
+						print "%s" % (",".join(altered))
+						
+			if len(candidates) > 1:
+				# check whether a specific term got tagged from the many, despite that they are different branches in the ontology
+				# assumption: specific term has more words (see OMIM:614751)
+				word_count = {}
+				most_words = 0
+				entity_with_most_words = ""
+				for candidate in candidates:
+					word_count[candidate.entity] = len(candidate.term.split(" "))
+					if word_count[candidate.entity] > most_words:
+						most_words = word_count[candidate.entity]
+						entity_with_most_words = candidate.entity
+				candidates = filter(lambda x: True if x.entity == entity_with_most_words else False, candidates)
+				if self._debug:
+					print "After keeping the specific term with the highest number of words"
+					altered = []
+					for c in candidates:
+						altered.append(c.entity)
+						print "%s" % (",".join(altered))
+					
+			if len(candidates) > 1 and ignore == False:
 				raise Exception("There are more than entities to map at %s: %s" % (page, ";".join(map(str,candidates))))
+			
+			if len(tagged_entities) > 0 and len(candidates) == 0 and ignore == False:
+				raise Exception("Something happened at %s, all of the possible mapping are gone! Original candidates were: %s" % (page, ";".join(map(str,tagged_entities))))
 			
 			if len(candidates) == 1:
 				mapping[page] = MappingData(candidates[0].entity, 0, [candidates[0].term])		
