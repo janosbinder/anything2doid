@@ -4,7 +4,6 @@ import os
 import re
 import sys
 import math
-import random
 sys.path.append("/home/purple1/textmining/tagger/")
 import tagger
 import backtrack
@@ -144,18 +143,18 @@ class Mapper:
 						altered.append(c.entity)
 						print "%s" % (",".join(altered))
 			
-			if len(candidates) > 1 and len(filter(lambda x: True if x.text_type == "title" else False, candidates)) > 0:
+			#if len(candidates) > 1 and len(filter(lambda x: True if x.text_type == "title" else False, candidates)) > 0:
 				# check whether it is an original title, keep if it is the only title
-				cs = filter(lambda x: True if x.text_type == "title" else False, candidates)
-				if(len(cs) != 0):
-					candidates = cs			
-				if self._debug:
-					altered = []
-					print "After filtering out derived titles"
-					for c in candidates:
-						altered.append(c.entity)
-						print "%s" % (",".join(altered))
-						
+			#	cs = filter(lambda x: True if x.text_type == "title" else False, candidates)
+			#	if(len(cs) != 0):
+			#		candidates = cs			
+			#	if self._debug:
+			#		altered = []
+			#		print "After filtering out derived titles"
+			#		for c in candidates:
+			#			altered.append(c.entity)
+			#			print "%s" % (",".join(altered))
+			#			
 			if len(candidates) > 1:
 				# check whether a specific term got tagged from the many, despite that they are different branches in the ontology
 				# assumption: specific term has more words (see OMIM:614751)

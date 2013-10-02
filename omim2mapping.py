@@ -4,9 +4,9 @@ import os
 import re
 import sys
 import math
-
 import backtrack
 import omimmapper as mapper
+import benchmark
 
 DEBUG_MODE = False
 
@@ -72,7 +72,7 @@ def parse_title(title):
 			if(len(parts) > 2):
 				ending = " " + " ".join(parts[2:])
 		
-			adjectives = parts[1].split(" ")			
+			adjectives = parts[1].split(" ")
 			if len(adjectives) == 2:
 				derived_titles.append("%s %s %s%s" % (adjectives[0], adjectives[1], parts[0], ending)) # Permutating adjectives: (1, 2)
 				derived_titles.append("%s %s %s%s" % (adjectives[1], adjectives[0], parts[0], ending)) # Permutating adjectives: (2, 1)
@@ -188,6 +188,7 @@ if __name__ == "__main__":
 		#DEBUG_FILTER.add(253320)
 		#DEBUG_FILTER.add(136120)
 		#DEBUG_FILTER.add(600046)
+		DEBUG_FILTER.add(612098)
 		
 	MATCHES = open("omim_matches.tsv", "w")
 	TITLES = open("omim_titles.tsv", "w")
@@ -209,6 +210,8 @@ if __name__ == "__main__":
 					TITLES.write("%s\ttitle\t#%s\t%s\n" % (docid, i, t))
 					#print >> sys.stderr, omim, t
 					#print >> sys.stderr, omim, ";".join(m.tag_text(docid, t, "title"))
+					if DEBUG_MODE:
+						print "%s: Passing title %s for tagging" % (docid, t)
 					matches = m.tag_text(docid, t, "title")
 					for te in matches:
 						MATCHES.write("%s\t%s\t%s\n" % (docid, t, te))
@@ -216,6 +219,8 @@ if __name__ == "__main__":
 				for dt in derived_titles:
 					TITLES.write("%s\tderived_title\t#%s\t%s\n" % (docid, i, dt))
 					#print >> sys.stderr, omim, ";".join(m.tag_text(docid, dt, "derived_title"))
+					if DEBUG_MODE:
+						print "%s: Passing derived title %s for tagging" % (docid, dt)
 					matches = m.tag_text(docid, dt, "derived_title")
 					for te in matches:
 						MATCHES.write("%s\t%s\t%s\n" % (docid, dt, te))
@@ -236,8 +241,8 @@ if __name__ == "__main__":
 	
 	raw_mapping = m.get_mapping()
 	
-	#sys.stderr.write(str(mapper.Benchmark("omim_benchmark.tsv").get_performance(raw_mapping)))
-	#sys.exit()
+	sys.stderr.write(str(benchmark.Benchmark(b, "omim_benchmark.tsv").get_performance(raw_mapping)))
+	sys.exit()
 	
 	for docid in raw_mapping.iterkeys():
 		data = raw_mapping[docid]
