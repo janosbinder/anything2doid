@@ -101,6 +101,19 @@ sub pluralize_and_tmpprint
 	}
 }
 
+
+my %roman_arabic = ("I" => "1",
+		"II" => "2",
+		"III" => "3",
+		"IV" => "4",
+		"V" => "5",
+		"VI" => "6",
+		"VII" => "7",
+		"VIII" => "8",
+		"IX" => "9",
+		"X" => "10"
+		);
+
 open TSV, "< $ARGV[1]";
 while (<TSV>) {
 	
@@ -315,6 +328,55 @@ while (<TSV>) {
 			pluralize_and_tmpprint($priority, $serial, $_);
 		}
 
+		# Convert Roman numbers to Arabic numbers
+		foreach my $number (keys %roman_arabic) {
+			if ($name =~ / $number/) {
+				my $endpos = $+[0];
+				my $arabic = $roman_arabic{$number};
+				my $altered_name = $name;
+				if (length($name) == $endpos) {
+					# Match of roman number at the end of title.
+					$altered_name =~ s/ $number/ $arabic/;
+					if ($altered_name ne $name) {
+						pluralize_and_tmpprint($priority, $serial, $altered_name);
+					}
+				} elsif (length($name) - 1 == $endpos) {
+					# Match of roman number one character before at the end of title.
+					$altered_name =~ s/ $number(( \w)|([a-zA-H]))/ $arabic$1/;
+					if ($altered_name ne $name) {
+						pluralize_and_tmpprint($priority, $serial, $altered_name);
+					}
+				} else {
+					# Match but not at the end.
+					$altered_name =~ s/ $number(( \w)|([a-zA-H]?:(\w+)))/ $arabic$1/;
+					if ($altered_name ne $name) {
+						pluralize_and_tmpprint($priority, $serial, $altered_name);
+					}
+				}
+			}
+		}
+
+		
+		foreach my $number (keys %roman_arabic) {
+			if ($name =~ / $number/) {
+				my $endpos = $+[0];
+				my $arabic = $roman_arabic{$number};
+				if (length($name) == $endpos) {
+					# Match of roman number at the end of title.
+					s/ $number/ $arabic/;
+					pluralize_and_tmpprint($priority, $serial, $_);
+				} elsif (length($name) - 1 == $endpos) {
+					# Match of roman number one character before at the end of title.
+					s/ $number(( \w)|([a-zA-H]))/ $arabic$1/;
+					pluralize_and_tmpprint($priority, $serial, $_);
+				} else {
+					# Match but not at the end.
+					s/ $number(( \w)|([a-zA-H]?:(\w+)))/ $arabic$1/;
+					pluralize_and_tmpprint($priority, $serial, $_);
+				}
+			}
+		}
+		
 		# Create the pure plural variant
 		pluralize_and_tmpprint($priority+1, $serial, $name);
 		

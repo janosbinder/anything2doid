@@ -32,7 +32,7 @@ class Benchmark:
 				else:
 					fp += 1
 					is_relatives = False
-					if self._backtrack.is_child(mapping[document].entity, self._expected[document]) or self._backtrack.is_parent(mapping[document].entity, self._expected[document]):
+					if self._backtrack.is_child(mapping[document].entity, self._expected[document]) or self._backtrack.is_child(self._expected[document], mapping[document].entity):
 						is_relatives = True
 					if is_relatives:
 						DEBUG.write("%s\t%s\t%s\tRELATIVES\n" % (document, mapping[document].entity, self._expected[document]))	

@@ -108,6 +108,8 @@ def handle_numbers(original_titles):
 	
 	titles = []
 	for t in original_titles:
+		# keep also original title
+		#ot = t
 		# change Roman numbers to arabic numbers
 		for number in roman_arabic:
 			roman_pattern = re.compile(r' ' + number)
@@ -132,6 +134,9 @@ def handle_numbers(original_titles):
 			titles.append(re_number_letter_separator.sub("\\1",t))
 		if(t.strip() != ""):
 			titles.append(t)
+		# add also original title
+		#if(ot.strip() != ""):
+			#titles.append(ot)
 	return titles
 
 if __name__ == "__main__":
@@ -188,7 +193,11 @@ if __name__ == "__main__":
 		#DEBUG_FILTER.add(253320)
 		#DEBUG_FILTER.add(136120)
 		#DEBUG_FILTER.add(600046)
-		DEBUG_FILTER.add(612098)
+		#DEBUG_FILTER.add(612098)
+		#DEBUG_FILTER.add(302802)
+		#DEBUG_FILTER.add(217090)
+		#DEBUG_FILTER.add(310000)
+		#DEBUG_FILTER.add(258100)
 		
 	MATCHES = open("omim_matches.tsv", "w")
 	TITLES = open("omim_titles.tsv", "w")
@@ -242,7 +251,7 @@ if __name__ == "__main__":
 	raw_mapping = m.get_mapping()
 	
 	sys.stderr.write(str(benchmark.Benchmark(b, "omim_benchmark.tsv").get_performance(raw_mapping)))
-	sys.exit()
+	#sys.exit()
 	
 	for docid in raw_mapping.iterkeys():
 		data = raw_mapping[docid]
