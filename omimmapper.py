@@ -81,31 +81,58 @@ class Mapper:
 		mapping = {}
 		for page in self._page_entity:
 			tagged_entities = self._page_entity[page]
-			seen = set()
-			
+			seen = {}
 			ignore = False
 			candidates = []
+			
+			#count how often was an entity tagged
+			for tagged_entity in tagged_entities:
+				if tagged_entity.entity in seen:
+					seen[tagged_entity.entity] += 1
+				else:
+					seen[tagged_entity.entity] = 1
+			
+			#unite tagged terms, and create one with the strongest properties
+			for s in seen:
+				if s > 1:
+					entities = filter(lambda x: True if x.entity == s else False, tagged_entities)
+					united_entity = s
+					united_start = 10000
+					united_end = 0
+					united_term_set = set()
+					united_text_type = ""
+					for entity in entities:
+						if united_start > entity.start:
+							united_start = entity.start
+						if united_end > entity.end:
+							united_end = entity.end
+						united_term_set.add(entity.term)
+						if united_text_type != "first_title":
+							united_text_type = entity.text_type
+					united_term = ";".join(list(united_term_set))
+					candidates.append(TaggedEntity(united_entity, united_start, united_end, united_term, united_text_type))
+					
+				if s == 1:
+					candidate = filter(lambda x: True if x.entity == s else False, tagged_entities)
+					candidates.extend(candidate)
+			
+			#ignore parents
+			cs = []
 			i=0
-			while i < len(tagged_entities):
-				# do not parse duplicate matches
-				if tagged_entities[i].entity in seen:
-					i+=1
-					continue
-				seen.add(tagged_entities[i].entity)
-
-				# do not add if any children has been tagged
+			while i < len(candidates):
 				j=0
-				while j < len(tagged_entities):
+				while j < len(candidates):
 					if j == i:
 						j+=1
 						continue
-					if self._backtrack.is_parent(tagged_entities[j].entity, tagged_entities[i].entity):
+					if self._backtrack.is_parent(candidates[j].entity, candidates[i].entity):
 						ignore = True
 					j+=1
 				if ignore != True:
-					candidates.append(tagged_entities[i])
+					cs.append(candidates[i])
 				i+=1
 				ignore = False
+			candidates = cs
 			
 			if self._debug:
 				print "Original tagged ID's for %s were:" % (page)
@@ -113,7 +140,7 @@ class Mapper:
 				for te in tagged_entities:
 					original.append(te.entity)
 				print "%s" % (",".join(original))
-				print "After filtering parents:"
+				print "After filtering parents and removing duplicates:"
 				altered = []
 				for c in candidates:
 					altered.append(c.entity)
@@ -141,7 +168,7 @@ class Mapper:
 					print "After filtering titles not starting at position 0"
 					for c in candidates:
 						altered.append(c.entity)
-						print "%s" % (",".join(altered))
+					print "%s" % (",".join(altered))
 			
 			#if len(candidates) > 1 and len(filter(lambda x: True if x.text_type == "title" else False, candidates)) > 0:
 				# check whether it is an original title, keep if it is the only title
@@ -154,7 +181,22 @@ class Mapper:
 			#		for c in candidates:
 			#			altered.append(c.entity)
 			#			print "%s" % (",".join(altered))
-			#			
+			#
+			if len(candidates) > 1:
+				#check whether title is the first title (main title)
+				firsttitles = list()
+				for candidate in candidates:
+					if candidate.text_type == "first_title":
+						firsttitles.append(candidate)
+				if len(firsttitles) > 0:
+					candidates = firsttitles
+				if self._debug:
+					print "After choosing the match from the first title"
+					altered = []
+					for c in candidates:
+						altered.append(c.entity)
+					print "%s" % (",".join(altered))
+			
 			if len(candidates) > 1:
 				# check whether a specific term got tagged from the many, despite that they are different branches in the ontology
 				# assumption: specific term has more words (see OMIM:614751)
@@ -172,7 +214,7 @@ class Mapper:
 					altered = []
 					for c in candidates:
 						altered.append(c.entity)
-						print "%s" % (",".join(altered))
+					print "%s" % (",".join(altered))
 					
 			if len(candidates) > 1 and ignore == False:
 				raise Exception("There are more than entities to map at %s: %s" % (page, ";".join(map(str,candidates))))

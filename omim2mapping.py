@@ -15,25 +15,30 @@ def parse_title(title):
 	re_acronym_and_newline = re.compile("; ([a-zA-Z0-9]+) ?\n", re.DOTALL)
 
 	original_titles = title.split(";;")
-	titles = []
-	derived_titles = []
-	intermediate_titles = []
-	and_titles = []
-	# TODO: handle multiple diseases in a separate list. These are with AND
-
+	titles_types = {}
+	intermediate_titles = {}
 
 	# split the titles (disgusting OMIM format)
 	i = 0
 	for t in original_titles:
 		if ((i == 0 and re_acronym_and_newline.search(t))):
-			intermediate_titles.extend(t.split("\n"))
-			i += 1
+			parts = t.split("\n")
+			for part in parts:
+				if i == 0:
+					intermediate_titles[part] = "first_title"
+				else:
+					intermediate_titles[part] = "title"
+				i += 1
 			continue
-			
-		intermediate_titles.append(t)
+		if i == 0:
+			intermediate_titles[t] = "first_title"
+		else:
+			intermediate_titles[t] = "title"
 		i += 1
 	
-	for it in intermediate_titles:
+	for it, title_type in intermediate_titles.iteritems():
+		derived_titles = []
+		titles = []
 		# skip empty lines
 		if it.strip() == "" or it.strip() == "\n":
 			continue
@@ -46,16 +51,15 @@ def parse_title(title):
 		
 		# handle diseases with AND
 		if it.find(" AND ") > 0:
+			and_titles = []
 			parts = it.split(" AND ")
 			lastpart = parts.pop()
 			for part in parts:
 				tparts = part.split(", ")
 				and_titles.extend(list(tparts))
-			#firstpart, lastpart = it.split(" AND ", 1)
-			#tparts = firstpart.split(", ")
-			#tparts.append(lastpart)
-			#and_titles.extend(list(tparts))
 			and_titles.append(lastpart)
+			for at in and_titles:
+				titles_types[at] = "and_title"
 		
 		# check for acronyms, and handle them as a title
 		acronym = ""
@@ -84,8 +88,14 @@ def parse_title(title):
 		# store acronyms
 		if (acronym != ""):
 			titles.append(acronym)
-			
-	return (handle_numbers(titles), handle_numbers(derived_titles), and_titles)
+		
+		for title in handle_numbers(titles):
+			titles_types[title] = title_type
+		if title_type == "title":
+			title_type = "derived_title"
+		for title in handle_numbers(derived_titles):
+			titles_types[title] = title_type
+	return titles_types
 			
 
 
@@ -208,42 +218,36 @@ if __name__ == "__main__":
 		if DEBUG_MODE and (omim not in DEBUG_FILTER):
 			continue
 		title = info.group(4)
-		titles, derived_titles, and_titles = parse_title(title)
+		titles = []
+		titles_types = parse_title(title)
+		for key, value in titles_types.iteritems():
+			if value == "first_title":
+				titles.append(key)		
 		if symbol != "^" and symbol != "*" and omim not in ignored_omim:
 			text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 			docid  = "OMIM:%d" % omim
 			omim_title[docid] = ";; ".join(titles)
-			if len(and_titles) == 0:
+			if "and_title" not in titles_types.values():
 				i = 0
-				for t in titles:
-					TITLES.write("%s\ttitle\t#%s\t%s\n" % (docid, i, t))
-					#print >> sys.stderr, omim, t
-					#print >> sys.stderr, omim, ";".join(m.tag_text(docid, t, "title"))
+				for t, t_type in titles_types.iteritems():
+					TITLES.write("%s\t%s\t#%s\t%s\n" % (docid, t_type, i, t))
 					if DEBUG_MODE:
-						print "%s: Passing title %s for tagging" % (docid, t)
-					matches = m.tag_text(docid, t, "title")
+						print "%s: Passing title %s (type %s) for tagging" % (docid, t, t_type)
+					matches = m.tag_text(docid, t, t_type)
 					for te in matches:
 						MATCHES.write("%s\t%s\t%s\n" % (docid, t, te))
 					i += 1
-				for dt in derived_titles:
-					TITLES.write("%s\tderived_title\t#%s\t%s\n" % (docid, i, dt))
-					#print >> sys.stderr, omim, ";".join(m.tag_text(docid, dt, "derived_title"))
-					if DEBUG_MODE:
-						print "%s: Passing derived title %s for tagging" % (docid, dt)
-					matches = m.tag_text(docid, dt, "derived_title")
-					for te in matches:
-						MATCHES.write("%s\t%s\t%s\n" % (docid, dt, te))
-					i += 1
 			else:
 				i = 0
-				for at in and_titles:
-					and_id = "%s#%d" % (docid, i)
-					omim_title[and_id] = at
-					TITLES.write("%s\tand_title\t#%s\t%s\n" % (and_id, i, at))
-					matches = m.tag_text(and_id, at, "and_title")
-					for te in matches:
-						MATCHES.write("%s\t%s\t%s\n" % (and_id, at, te))				
-					i += 1
+				for t, t_type in titles_types.iteritems():
+					if t_type == "and_title":
+						and_id = "%s#%d" % (docid, i)
+						omim_title[and_id] = t
+						TITLES.write("%s\t%s\t#%s\t%s\n" % (and_id, t_type, i, t))
+						matches = m.tag_text(and_id, t, t_type)
+						for te in matches:
+							MATCHES.write("%s\t%s\t%s\n" % (and_id, t, te))				
+						i += 1
 			#m.tag_text(docid, text, "text")
 	TITLES.close()
 	MATCHES.close()
