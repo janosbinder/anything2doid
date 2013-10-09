@@ -49,7 +49,7 @@ def parse_title(title):
 		# remove everything with "With ..."
 		it = re_remove_with.sub("", it)
 		
-		# handle diseases with AND
+		# handle diseases with AND separately
 		if it.find(" AND ") > 0:
 			and_titles = []
 			parts = it.split(" AND ")
@@ -60,41 +60,41 @@ def parse_title(title):
 			and_titles.append(lastpart)
 			for at in and_titles:
 				titles_types[at] = "and_title"
-		
-		# check for acronyms, and handle them as a title
-		acronym = ""
-		a = it.split("; ")
-		if len(a) > 1:
-			acronym = a[1]
-			it = a[0]
-
-		# reverse titles with adjectives, and generate two varians if there are multiple adjectives
-		parts = it.split(", ")
-								
-		if len(parts) > 1 and parts[1].find("TYPE") < 0:
-			ending = ""
-			if(len(parts) > 2):
-				ending = " " + " ".join(parts[2:])
-		
-			adjectives = parts[1].split(" ")
-			if len(adjectives) == 2:
-				derived_titles.append("%s %s %s%s" % (adjectives[0], adjectives[1], parts[0], ending)) # Permutating adjectives: (1, 2)
-				derived_titles.append("%s %s %s%s" % (adjectives[1], adjectives[0], parts[0], ending)) # Permutating adjectives: (2, 1)
-			else:
-				derived_titles.append("%s %s%s" % (parts[1], parts[0], ending)) # More than two adjectives or just one results in a permuation of the noun and adjective only.
-
-		# store original title
-		titles.append(it.replace(",", ""))
-		# store acronyms
-		if (acronym != ""):
-			titles.append(acronym)
-		
-		for title in handle_numbers(titles):
-			titles_types[title] = title_type
-		if title_type == "title":
-			title_type = "derived_title"
-		for title in handle_numbers(derived_titles):
-			titles_types[title] = title_type
+		else:
+			# check for acronyms, and handle them as a title
+			acronym = ""
+			a = it.split("; ")
+			if len(a) > 1:
+				acronym = a[1]
+				it = a[0]
+	
+			# reverse titles with adjectives, and generate two varians if there are multiple adjectives
+			parts = it.split(", ")
+									
+			if len(parts) > 1 and parts[1].find("TYPE") < 0:
+				ending = ""
+				if(len(parts) > 2):
+					ending = " " + " ".join(parts[2:])
+			
+				adjectives = parts[1].split(" ")
+				if len(adjectives) == 2:
+					derived_titles.append("%s %s %s%s" % (adjectives[0], adjectives[1], parts[0], ending)) # Permutating adjectives: (1, 2)
+					derived_titles.append("%s %s %s%s" % (adjectives[1], adjectives[0], parts[0], ending)) # Permutating adjectives: (2, 1)
+				else:
+					derived_titles.append("%s %s%s" % (parts[1], parts[0], ending)) # More than two adjectives or just one results in a permuation of the noun and adjective only.
+	
+			# store original title
+			titles.append(it.replace(",", ""))
+			# store acronyms
+			if (acronym != ""):
+				titles.append(acronym)
+			
+			for title in handle_numbers(titles):
+				titles_types[title] = title_type
+			if title_type == "title":
+				title_type = "derived_title"
+			for title in handle_numbers(derived_titles):
+				titles_types[title] = title_type
 	return titles_types
 			
 
@@ -208,6 +208,7 @@ if __name__ == "__main__":
 		#DEBUG_FILTER.add(217090)
 		#DEBUG_FILTER.add(310000)
 		#DEBUG_FILTER.add(258100)
+		#DEBUG_FILTER.add(306955)
 		
 	MATCHES = open("omim_matches.tsv", "w")
 	TITLES = open("omim_titles.tsv", "w")
@@ -227,9 +228,11 @@ if __name__ == "__main__":
 			text   = re_space_before_number.sub("\\1 \\2", info.group(5)).strip().replace(",", "").replace("\n", " ")
 			docid  = "OMIM:%d" % omim
 			omim_title[docid] = ";; ".join(titles)
-			if "and_title" not in titles_types.values():
+			if "first_title" in titles_types.values() or "and_title" not in titles_types.values():
 				i = 0
 				for t, t_type in titles_types.iteritems():
+					if t_type == "and_title":
+						continue
 					TITLES.write("%s\t%s\t#%s\t%s\n" % (docid, t_type, i, t))
 					if DEBUG_MODE:
 						print "%s: Passing title %s (type %s) for tagging" % (docid, t, t_type)
