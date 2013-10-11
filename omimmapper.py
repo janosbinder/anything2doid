@@ -223,7 +223,7 @@ class Mapper:
 				raise Exception("Something happened at %s, all of the possible mapping are gone! Original candidates were: %s" % (page, ";".join(map(str,tagged_entities))))
 			
 			if len(candidates) == 1:
-				mapping[page] = MappingData(candidates[0].entity, 0, [candidates[0].term])		
+				mapping[page] = MappingData(candidates[0].entity, None, [candidates[0].term])		
 
 		
 		return mapping

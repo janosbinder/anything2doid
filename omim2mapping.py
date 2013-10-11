@@ -209,6 +209,7 @@ if __name__ == "__main__":
 		#DEBUG_FILTER.add(310000)
 		#DEBUG_FILTER.add(258100)
 		#DEBUG_FILTER.add(306955)
+		#DEBUG_FILTER.add(612541)
 		
 	MATCHES = open("omim_matches.tsv", "w")
 	TITLES = open("omim_titles.tsv", "w")
@@ -257,10 +258,15 @@ if __name__ == "__main__":
 	
 	raw_mapping = m.get_mapping()
 	
-	sys.stderr.write(str(benchmark.Benchmark(b, "omim_benchmark.tsv").get_performance(raw_mapping)))
+	precision, recall, f1 = benchmark.Benchmark(b, "omim_benchmark.tsv").get_performance(raw_mapping)
+	sys.stderr.write("Precision: %s Recall: %s F1: %s\n" % (precision, recall, f1))
 	#sys.exit()
-	
+		
 	for docid in raw_mapping.iterkeys():
 		data = raw_mapping[docid]
-		print "%f\t%s\t%s\t%s\t%s" % (data.score, docid, data.entity, "|".join(data.synonyms), omim_title[docid])
+		if (data.score == None):
+			print "%s\t%s\t%s\t%s" % (docid, data.entity, "|".join(data.synonyms), omim_title[docid])
+		else:
+			print "%f\t%s\t%s\t%s\t%s" % (data.score, docid, data.entity, "|".join(data.synonyms), omim_title[docid])
+		
 
