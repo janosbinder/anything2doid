@@ -25,9 +25,6 @@ class Benchmark:
 			if negative != None and negative == "F":
 				self._negatives[document] = entity
 			self._expected[document] = entity
-		for document in self._negatives:
-			print document
-		
 		
 	def get_performance(self, mapping):
 		tp = 0
