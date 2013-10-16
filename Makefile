@@ -1,4 +1,7 @@
-all: doid_entities.tsv doid_names.tsv doid_groups.tsv doid_names_expanded.tsv string_doid_mapping.tsv omim_doid_mapping.tsv
+all: doid_entities.tsv doid_names.tsv doid_groups.tsv doid_names_expanded.tsv omim_doid_mapping.tsv
+
+clean:
+	rm doid_entities.tsv doid_names.tsv doid_groups.tsv doid_names_expanded.tsv string_doid_mapping.tsv omim_doid_mapping.tsv
 
 %_entities.tsv %_names.tsv %_groups.tsv: %.obo
 	./obo2reflect.pl $*
