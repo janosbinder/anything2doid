@@ -54,6 +54,7 @@ class Benchmark:
 							WRONG.write("%s\t%s\t%s\t\n" % (document, mapping[document].entity, self._expected[document]))	
 			else:
 				fn += 1
+				WRONG.write("%s\t%s\t\tNO_MAPPING_EXISTS\n" % (document, self._expected[document]))
 		WRONG.close()
 		GOOD.close()
 		precision = 0.0
