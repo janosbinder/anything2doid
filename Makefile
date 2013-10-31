@@ -9,6 +9,9 @@ clean:
 %_names_expanded.tsv: %_entities.tsv %_names.tsv
 	./orthoexpand.pl $^ > $@
 
+omim_doid_from_doid: doid.obo
+	./obo2omim.pl $^ > $@
+
 omim_doid_mapping.tsv: omim.txt omim2mapping.py
 	./omim2mapping.py > $@	
 
